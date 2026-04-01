@@ -92,12 +92,13 @@ if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser(description="多平面纹理渲染预览")
     argparser.add_argument("-j", "--planes_json", type=str, help="包含平面信息的JSON文件路径，纹理文件应与JSON在同一目录下")
+    argparser.add_argument("-n", "--num_planes", type=int, default=-1, help="要加载的平面数量")
     args = argparser.parse_args()
 
     import torch
 
     # 1. 实例化渲染器
-    renderer = train.load_planes(args.planes_json, noise_level=0.1)
+    renderer = train.load_planes(args.planes_json, noise_level=0.1, n=args.num_planes)
 
     # 2. 设置一个测试相机视角
     #rays_o, rays_rot = generate_dummy_rays(width=800, height=600) 

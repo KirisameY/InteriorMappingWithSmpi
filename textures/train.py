@@ -46,7 +46,7 @@ class MultiPlaneRenderer(nn.Module):
         self.register_buffer('plane_lengths', torch.stack([torch.from_numpy(plane.length_vec).float() for plane in planes])) # (N_planes, 3)
         self.register_buffer('plane_widths', torch.stack([torch.from_numpy(plane.width_vec).float() for plane in planes])) # (N_planes, 3)
 
-        initial_textures = torch.stack([plane.texture for plane in planes]) # (N_planes, 4, tex_width, tex_height)
+        initial_textures = torch.stack([plane.texture for plane in planes], dim=0) # (N_planes, 4, tex_width, tex_height)
 
         self.textures = nn.Parameter(initial_textures) # nn.Parameter 使纹理成为可学习的参数
 
@@ -95,24 +95,24 @@ class MultiPlaneRenderer(nn.Module):
         u = torch.sum((p - plane_c) * plane_l, dim=-1) / torch.sum(plane_l * plane_l, dim=-1) # (N_planes, N_rays)
         v = torch.sum((p - plane_c) * plane_w, dim=-1) / torch.sum(plane_w * plane_w, dim=-1) # (N_planes, N_rays)
         # 从[-0.5, 0.5] 归一化到 [-1, 1] 并翻转v轴，适配 grid_sample 的输入要求
-        uv = torch.stack([u, -v], dim=-1) * 2 # (N_planes, N_rays, 2) -> [-1, 1] 范围内的 UV 坐标
-
-
-        # 3. 深度排序
-        t_sorted, indices = torch.sort(t, dim=0, descending=False) # (N_planes, N_rays)
-        uv_sorted = uv.gather(0, indices.unsqueeze(-1).expand(-1, -1, 2)) # (N_planes, N_rays, 2)
+        uv = torch.stack([v, u], dim=-1) * 2 # (N_planes, N_rays, 2) -> [-1, 1] 范围内的 UV 坐标
         
 
-        # 4. 采样纹理
+        # 3. 采样纹理
         # 使用 F.grid_sample 来采样纹理，它是可微的双线性插值
-        sampled_rgba_sorted = F.grid_sample(
+        sampled_rgba = F.grid_sample(
             textures,               # (N_planes, 4, tex_w, tex_h)
-            uv_sorted.unsqueeze(1), # (N_planes, N_rays, 2) -> (N_planes, 1, N_rays, 2) 以适配 grid_sample 的输入要求
+            uv.unsqueeze(1),        # (N_planes, N_rays, 2) -> (N_planes, 1, N_rays, 2) 以适配 grid_sample 的输入要求
             mode='bilinear',        # 双线性插值
             padding_mode='zeros',   # 超出平面的部分设为透明
             align_corners=False     # 是否将 [-1, 1] 映射到像素中心
         ) # (N_planes, 4, 1, N_rays)
-        sampled_rgba_sorted = sampled_rgba_sorted.squeeze(2).permute(0, 2, 1) # (N_planes, N_rays, 4)
+        sampled_rgba = sampled_rgba.squeeze(2).permute(0, 2, 1) # (N_planes, N_rays, 4)
+
+
+        # 3. 深度排序
+        t_sorted, indices = torch.sort(t, dim=0, descending=False) # (N_planes, N_rays)
+        sampled_rgba_sorted = torch.gather(sampled_rgba, 0, indices.unsqueeze(-1).expand(-1, -1, 4)) # (N_planes, N_rays, 4)
 
 
         # 5. Alpha Blending (从前向后累加)
@@ -131,7 +131,7 @@ class MultiPlaneRenderer(nn.Module):
         return rendered_color, weights
 
 
-def load_planes(path: str, noise_level: float = 0.1) -> MultiPlaneRenderer:
+def load_planes(path: str, noise_level: float = 0.1, n: int = -1) -> MultiPlaneRenderer:
     def texture_loader(tex_path: str) -> torch.Tensor:
         # 加载纹理图像并转换为 Tensor，范围归一化到 [0, 1]
         img = Image.open(tex_path).convert('L') # 单通道灰度图
@@ -148,5 +148,9 @@ def load_planes(path: str, noise_level: float = 0.1) -> MultiPlaneRenderer:
         return rgba
 
     planes = plane.read_from_json(path, texture_loader)
-    return MultiPlaneRenderer(planes)
+
+    if n < 0: n = len(planes)
+    n = min(n, len(planes))
+
+    return MultiPlaneRenderer(planes[:n])
 
