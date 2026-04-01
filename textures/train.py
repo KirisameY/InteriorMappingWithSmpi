@@ -1,6 +1,21 @@
+import sys, os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms.functional as Fv
+
+from typing import List
+import json
+import numpy as np
+from PIL import Image
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+import planes.plane as plane
+from planes.plane import PlaneRectangle
 
 class MultiPlaneRenderer(nn.Module):
     '''
@@ -13,19 +28,27 @@ class MultiPlaneRenderer(nn.Module):
         textures: (num_planes, 4, tex_width, tex_height) 可学习的纹理贴图
     '''
 
-    def __init__(self, num_planes: int, tex_width: int, tex_height: int):
+    def __init__(self, planes: List[PlaneRectangle[torch.Tensor]]):
+        """
+        初始化多平面渲染器
+        Parameters:
+            planes: List[PlaneRectangle]
+                每个平面的几何信息和初始纹理（Tensor[4(RGBA), tex_width, tex_height]）
+
+        """
         super().__init__()
+        # num_planes = len(planes)
+        # tex_width, tex_height = planes[0].texture.shape[2], planes[0].texture.shape[1] # 假设所有平面纹理尺寸相同
 
         # 定义平面的几何信息
-        self.plane_normals = torch.tensor([...], dtype=torch.float32) 
-        self.plane_centers = torch.tensor([...], dtype=torch.float32)
-        self.plane_lengths = torch.tensor([...], dtype=torch.float32)
-        self.plane_widths = torch.tensor([...], dtype=torch.float32)
-        
-        initial_textures = torch.full((num_planes, 4, tex_width, tex_height), 0.5)
-        # todo: 为平面设定空间信息、为alpha通道填充初始数据
+        self.register_buffer('plane_normals', torch.stack([torch.from_numpy(plane.normal).float() for plane in planes])) # (N_planes, 3)
+        self.register_buffer('plane_centers', torch.stack([torch.from_numpy(plane.center).float() for plane in planes])) # (N_planes, 3)
+        self.register_buffer('plane_lengths', torch.stack([torch.from_numpy(plane.length_vec).float() for plane in planes])) # (N_planes, 3)
+        self.register_buffer('plane_widths', torch.stack([torch.from_numpy(plane.width_vec).float() for plane in planes])) # (N_planes, 3)
 
-        self.textures = nn.Parameter(initial_textures) # nn.Parameter 告诉 PyTorch 这玩意需要被训练！
+        initial_textures = torch.stack([plane.texture for plane in planes]) # (N_planes, 4, tex_width, tex_height)
+
+        self.textures = nn.Parameter(initial_textures) # nn.Parameter 使纹理成为可学习的参数
 
     def forward(self, rays_o: torch.Tensor, rays_rot: torch.Tensor):
         """ 
@@ -93,7 +116,7 @@ class MultiPlaneRenderer(nn.Module):
 
 
         # 5. Alpha Blending (从前向后累加)
-        alpha = sampled_rgba_sorted[..., 3] # (N_planes, N_rays, 1)
+        alpha = sampled_rgba_sorted[..., 3:4] # (N_planes, N_rays, 1)
         rgb = sampled_rgba_sorted[..., :3]  # (N_planes, N_rays, 3)
         
         one_minus_alpha = 1.0 - alpha
@@ -106,3 +129,24 @@ class MultiPlaneRenderer(nn.Module):
 
         # final. 返回渲染结果和权重（权重用于深度学习）
         return rendered_color, weights
+
+
+def load_planes(path: str, noise_level: float = 0.1) -> MultiPlaneRenderer:
+    def texture_loader(tex_path: str) -> torch.Tensor:
+        # 加载纹理图像并转换为 Tensor，范围归一化到 [0, 1]
+        img = Image.open(tex_path).convert('L') # 单通道灰度图
+
+        width, height = img.size
+
+        alpha = Fv.to_tensor(img) # (1, H, W)，范围 [0, 1]
+        # 调换w和h的维度以适配后续处理
+        alpha = alpha.permute(0, 2, 1) # (1, W, H)
+        alpha = alpha * 0.5 # alpha 缩放至0.5，增加一些透明度余量
+
+        rgb = torch.clamp(0.5 + torch.randn(3, width, height) * noise_level, 0, 1) # (3, W, H)
+        rgba = torch.cat([rgb, alpha], dim=0) # (4, W, H)
+        return rgba
+
+    planes = plane.read_from_json(path, texture_loader)
+    return MultiPlaneRenderer(planes)
+
