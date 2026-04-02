@@ -73,15 +73,15 @@ def get_camera_rays(eye, width, height, fov_deg):
     
     origin = torch.stack([origin_x, origin_y], dim=-1)
     
-    # 5. 计算 Rotate (Theta: 与Z轴夹角, Phi: 在XY平面的方位角)
+    # 5. 计算 Rotate (Theta: 绕 x 轴旋转，Phi: 绕 y 轴旋转)
     # 归一化方向向量
     dirs = torch.stack([dir_x, dir_y, dir_z], dim=-1)
     dirs = dirs / torch.norm(dirs, dim=-1, keepdim=True)
     
-    # Theta (0 到 PI): acos(dir_z)
-    theta = torch.acos(dirs[..., 2])
-    # Phi (-PI 到 PI): atan2(dir_y, dir_x)
-    phi = torch.atan2(dirs[..., 1], dirs[..., 0])
+    # Theta (-PI/2 到 PI/2): asin(dir_y)
+    theta = torch.asin(dirs[..., 1])
+    # Phi (-PI 到 PI): atan2(dir_x, -dir_z) 注意这里 dir_z 是负的，因为相机朝 -z 方向
+    phi = torch.atan2(dirs[..., 0], -dirs[..., 2])
     
     rotate = torch.stack([theta, phi], dim=-1)
     
