@@ -50,6 +50,33 @@ class MultiPlaneRenderer(nn.Module):
         initial_textures = torch.stack([plane.texture for plane in planes], dim=0) # (N_planes, 4, tex_width, tex_height)
 
         self.textures = nn.Parameter(initial_textures) # nn.Parameter 使纹理成为可学习的参数
+    
+    def load_checkpoint(self, checkpoint_path: str) -> None:
+        """ 
+        加载模型 checkpoint
+        Parameters:
+            checkpoint_path: 模型 checkpoint 的文件路径
+        """
+        try:
+            checkpoint = torch.load(checkpoint_path)
+            self.textures.data.copy_(checkpoint['textures'])
+        except Exception as e:
+            print(f"Error loading checkpoint from {checkpoint_path}: {e}")
+    
+    def save_checkpoint(self, checkpoint_path: str) -> None:
+        """ 
+        保存模型 checkpoint
+        Parameters:
+            checkpoint_path: 模型 checkpoint 的文件路径
+        """
+        try:
+            checkpoint = {
+                'textures': self.textures.data.cpu()
+            }
+            torch.save(checkpoint, checkpoint_path)
+            print(f"Checkpoint saved to {checkpoint_path}")
+        except Exception as e:
+            print(f"Error saving checkpoint to {checkpoint_path}: {e}")
 
     def forward(self, rays_o: torch.Tensor, rays_rot: torch.Tensor):
         """ 
@@ -198,23 +225,28 @@ def run():
 
     parser = argparse.ArgumentParser(description="训练多平面纹理渲染器")
 
-    parser.add_argument("-j", "--planes_json", type=str, help="包含平面信息的JSON文件路径，纹理文件应与JSON在同一目录下")
-    parser.add_argument("-n", "--noise_level", type=float, default=0.1, help="初始纹理的噪声水平，范围 [0, 1]")
+    parser.add_argument("-j", "--planes_json", type=str, help="[必选]包含平面信息的JSON文件路径，纹理文件应与JSON在同一目录下")
+    parser.add_argument("-c", "--checkpoint_path", type=str, default=None, help="模型的checkpoint路径，用于继续训练")
+    parser.add_argument("-n", "--noise_level", type=float, default=0.1, help="[仅当未使用-c时有效]初始纹理的噪声水平，范围 [0, 1]")
 
-    parser.add_argument("-g", "--gt_colors_path", type=str, help="包含一组斜正交投影下真实光场颜色文件的目录，格式为RGB通道的png图像，文件名格式为'rgba_phi_theta.png'，其中theta和phi是对应视角的旋转参数(角度)")
+    parser.add_argument("-g", "--gt_colors_path", type=str, help="[必选]包含一组斜正交投影下真实光场颜色文件的目录，格式为RGB通道的png图像，文件名格式为'rgba_phi_theta.png'，其中theta和phi是对应视角的旋转参数(角度)")
 
-    parser.add_argument("-o", "--output_dir", type=str, default=None, help="训练过程中保存中间结果的目录，包含渲染结果和纹理图像")
+    parser.add_argument("-o", "--output_dir", type=str, help="[必选]训练过程中保存中间结果的目录，checkpoint将被保存在这里")
+    parser.add_argument("-s", "--save_interval", type=int, default=100, help="每隔多少轮保存一次checkpoint")
 
     parser.add_argument("-r", "--learning_rate", type=float, default=0.01, help="优化器的学习率")
-    parser.add_argument("-e", "--epochs", type=int, default=1000, help="训练的总轮数")
+    parser.add_argument("-e", "--epochs", type=int, default=100, help="训练的总轮数")
     parser.add_argument("-wm", "--mse_weight", type=float, default=1.0, help="MSE损失的权重")
     parser.add_argument("-wl", "--lpips_weight", type=float, default=0.1, help="LPIPS损失的权重")
 
     args = parser.parse_args()
 
 
-    # todo: 这里应该可选地加载之前的checkpoint或是像这样重新开始训练
     renderer = load_planes(args.planes_json, noise_level=args.noise_level)
+
+    if args.checkpoint_path is not None:
+        renderer.load_checkpoint(args.checkpoint_path)
+
     renderer.cuda() # 将模型移动到GPU
 
     optimizer = torch.optim.Adam(renderer.parameters(), lr=args.learning_rate)
@@ -247,6 +279,9 @@ def run():
 
 
     # 训练循环
+    just_saved = False
+    best_loss = float('inf')
+
     for epoch in range(epochs):
         total_loss = 0.0
         gts : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = random.shuffle(ground_truths)
@@ -271,9 +306,21 @@ def run():
             total_loss += loss.item()
 
         print(f"Epoch {epoch}/{epochs}, Loss: {total_loss / len(ground_truths):.4f}")
-    
 
-    # todo: 保存结果（其实训练过程里就该隔几个轮次存一下的，还有每个轮次检查一下loss然后存best）
+        just_saved = False
+        if (epoch + 1) % args.save_interval == 0:
+            checkpoint_path = os.path.join(args.output_dir, "latest.pth")
+            renderer.save_checkpoint(checkpoint_path)
+            just_saved = True
+        if total_loss < best_loss:
+            best_loss = total_loss
+            checkpoint_path = os.path.join(args.output_dir, "best.pth")
+            renderer.save_checkpoint(checkpoint_path)
+
+    # todo: 可以考虑摘出来一部分作为验证集，以后效果不好就这样做试试
+    if not just_saved:
+        checkpoint_path = os.path.join(args.output_dir, "latest.pth")
+        renderer.save_checkpoint(checkpoint_path)
 
 
 
