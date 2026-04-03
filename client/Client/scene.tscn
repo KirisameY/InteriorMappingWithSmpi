@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c0uoosyeukg4f"]
+
+[ext_resource type="Material" uid="uid://bmhuhqj364np4" path="res://res/planes/0_material.tres" id="1_ulcgi"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_ulcgi"]
+size = Vector2(30, 20)
+
+[node name="Scene" type="Node3D" unique_id=1776722009]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=457634975]
+material_override = ExtResource("1_ulcgi")
+mesh = SubResource("QuadMesh_ulcgi")

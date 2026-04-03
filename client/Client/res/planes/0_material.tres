@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bmhuhqj364np4"]
+
+[ext_resource type="Shader" uid="uid://cmu3bo8mo876g" path="res://res/planes/0.gdshader" id="1_yb2gk"]
+[ext_resource type="CompressedTexture2DArray" uid="uid://euf6b6jtqob6" path="res://res/planes/0_merged.png" id="2_dnud6"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_yb2gk")
+shader_parameter/texs = ExtResource("2_dnud6")
+shader_parameter/origin_size = Vector2(6, 4)
+shader_parameter/uv_scale = Vector2(5, 5)
+shader_parameter/uv_offset = Vector2(0, 0)
