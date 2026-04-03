@@ -116,6 +116,7 @@ if __name__ == "__main__":
     # rendered_image 的形状是 (N_rays, 3)，你需要把它 reshape 回 (H, W, 3)
     output_img = rendered_image.cpu().numpy().reshape(600, 800, 3)
     output_img = np.clip(output_img * 255, 0, 255).astype(np.uint8)
+    output_img = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
 
     # 5. 显示结果
     cv2.imshow("Preview", output_img)

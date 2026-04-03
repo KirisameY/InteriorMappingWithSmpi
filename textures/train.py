@@ -169,7 +169,7 @@ def load_planes(path: str, noise_level: float = 0.1, n: int = -1) -> MultiPlaneR
         alpha = Fv.to_tensor(img) # (1, H, W)，范围 [0, 1]
         # 调换w和h的维度以适配后续处理
         alpha = alpha.permute(0, 2, 1) # (1, W, H)
-        alpha = alpha * 0.5 # alpha 缩放至0.5，增加一些透明度余量
+        alpha *= 0.5 # alpha 缩放至0.5，增加一些透明度余量
 
         rgb = torch.clamp(0.5 + torch.randn(3, width, height) * noise_level, 0, 1) # (3, W, H)
         rgba = torch.cat([rgb, alpha], dim=0) # (4, W, H)
@@ -264,8 +264,8 @@ def run():
             image = Image.open(gtpath).convert('RGB')
             width, height = image.size
 
-            x_coords = (torch.linspace(-0.5, 0.5, steps=width+1)[:width] + 1.0/width) * args.gt_size_x # (W,)
-            y_coords = (torch.linspace(-0.5, 0.5, steps=height+1)[:height] + 1.0/height) * args.gt_size_y # (H,)
+            x_coords = (torch.linspace(-0.5, 0.5, steps=width+1)[:width] + 0.5/width) * args.gt_size_x # (W,)
+            y_coords = (torch.linspace(0.5, -0.5, steps=height+1)[1:] + 0.5/height) * args.gt_size_y # (H,)
             grid_x, grid_y = torch.meshgrid(x_coords, y_coords, indexing='ij') # (W, H)
             ray_o = torch.stack([grid_x, grid_y], dim=-1) # (W, H, 2)，范围 [-0.5, 0.5]
 
@@ -278,7 +278,6 @@ def run():
         else:
             print(f"警告: 文件 {gtpath} 的命名不符合 'rgba_phi_theta.png' 格式，已跳过")
     print(f"共加载了 {len(ground_truths)} 条训练数据")
-
 
     os.makedirs(args.output_dir, exist_ok=True)
 

@@ -5,14 +5,13 @@ import argparse
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", type=str, help="模型检查点路径")
-    parser.add_argument("--output", type=str, help="输出纹理文件的目录")
+    parser.add_argument("-c", "--checkpoint", type=str, help="模型检查点路径")
+    parser.add_argument("-o", "--output", type=str, help="输出纹理文件的目录")
     args = parser.parse_args()
 
     checkpoint = torch.load(args.checkpoint, map_location='cpu')
     textures : torch.Tensor = checkpoint['textures']  # (num_planes, 4, tex_width, tex_height)
-    textures = textures.cpu().numpy()
-
+    textures = textures.cpu()
     os.makedirs(args.output, exist_ok=True)
 
     for i, texture in enumerate(textures):
