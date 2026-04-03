@@ -230,9 +230,11 @@ def run():
     parser.add_argument("-n", "--noise_level", type=float, default=0.1, help="[仅当未使用-c时有效]初始纹理的噪声水平，范围 [0, 1]")
 
     parser.add_argument("-g", "--gt_colors_path", type=str, help="[必选]包含一组斜正交投影下真实光场颜色文件的目录，格式为RGB通道的png图像，文件名格式为'rgba_phi_theta.png'，其中theta和phi是对应视角的旋转参数(角度)")
+    parser.add_argument("-gx", "--gt_size_x", type=float, default=1, help="gt颜色图像对应视口的x轴尺寸")
+    parser.add_argument("-gy", "--gt_size_y", type=float, default=1, help="gt颜色图像对应视口的y轴尺寸")
 
     parser.add_argument("-o", "--output_dir", type=str, help="[必选]训练过程中保存中间结果的目录，checkpoint将被保存在这里")
-    parser.add_argument("-s", "--save_interval", type=int, default=100, help="每隔多少轮保存一次checkpoint")
+    parser.add_argument("-s", "--save_interval", type=int, default=20, help="每隔多少轮保存一次checkpoint")
 
     parser.add_argument("-r", "--learning_rate", type=float, default=0.01, help="优化器的学习率")
     parser.add_argument("-e", "--epochs", type=int, default=100, help="训练的总轮数")
@@ -254,7 +256,7 @@ def run():
 
 
     # 从指定目录加载所有的 ground truth 颜色图像，并根据文件名提取对应的视角参数，构建训练数据列表
-    gtfile_regex = re.compile(r"rgba_(?P<phi>-?\d+)_(?P<theta>-?\d+)\.png") # 从文件名中提取theta和phi的正则表达式
+    gtfile_regex = re.compile(r"rgba_(?P<phi>-?[\d.]+)_(?P<theta>-?[\d.]+)\.png") # 从文件名中提取theta和phi的正则表达式
     ground_truths : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
     for gtpath in Path(args.gt_colors_path).rglob("*.png"):
         match = gtfile_regex.match(gtpath.name)
@@ -262,8 +264,8 @@ def run():
             image = Image.open(gtpath).convert('RGB')
             width, height = image.size
 
-            x_coords = torch.linspace(-0.5, 0.5, steps=width+1)[:width] + 1.0/width # (W,)
-            y_coords = torch.linspace(-0.5, 0.5, steps=height+1)[:height] + 1.0/height # (H,)
+            x_coords = (torch.linspace(-0.5, 0.5, steps=width+1)[:width] + 1.0/width) * args.gt_size_x # (W,)
+            y_coords = (torch.linspace(-0.5, 0.5, steps=height+1)[:height] + 1.0/height) * args.gt_size_y # (H,)
             grid_x, grid_y = torch.meshgrid(x_coords, y_coords, indexing='ij') # (W, H)
             ray_o = torch.stack([grid_x, grid_y], dim=-1) # (W, H, 2)，范围 [-0.5, 0.5]
 
@@ -278,13 +280,15 @@ def run():
     print(f"共加载了 {len(ground_truths)} 条训练数据")
 
 
+    os.makedirs(args.output_dir, exist_ok=True)
+
     # 训练循环
     just_saved = False
     best_loss = float('inf')
 
     for epoch in range(epochs):
         total_loss = 0.0
-        gts : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = random.shuffle(ground_truths)
+        gts : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = random.sample(ground_truths, len(ground_truths))
 
         for ray_o, ray_rot, gt_color in gts:
             optimizer.zero_grad()
@@ -305,7 +309,7 @@ def run():
 
             total_loss += loss.item()
 
-        print(f"Epoch {epoch}/{epochs}, Loss: {total_loss / len(ground_truths):.4f}")
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss / len(ground_truths):.4f}")
 
         just_saved = False
         if (epoch + 1) % args.save_interval == 0:

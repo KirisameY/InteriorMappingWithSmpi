@@ -64,7 +64,10 @@ def create_texture_mesh(center, length_vec, width_vec, mask, color):
             vertices.extend([p0, p1, p2, p3])
             triangles.extend([
                 [idx, idx + 1, idx + 2],
-                [idx, idx + 2, idx + 3]
+                [idx, idx + 2, idx + 3],
+                # 反面
+                [idx + 2, idx + 1, idx],
+                [idx + 3, idx + 2, idx],
             ])
             colors.extend([color] * 4)
             idx += 4
@@ -89,9 +92,9 @@ def generate_color(i, total):
     return list(rgb)
 
 
-def visualize(output_dir=None, pcd_path=None):
-    if output_dir is None and pcd_path is None:
-        print("错误：必须至少输入点云路径或平面目录路径")
+def visualize(json_path=None, pcd_path=None):
+    if json_path is None and pcd_path is None:
+        print("错误：必须至少输入点云路径或平面JSON文件路径")
         return
 
     geometries = []
@@ -102,8 +105,8 @@ def visualize(output_dir=None, pcd_path=None):
         geometries.append(pcd)
 
     # 加载平面
-    if output_dir:
-        json_path = os.path.join(output_dir, "planes.json")
+    if json_path:
+        output_dir = os.path.dirname(json_path)
         if not os.path.exists(json_path):
             print(f"未找到 {json_path}")
         else:
@@ -157,7 +160,7 @@ def visualize(output_dir=None, pcd_path=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="点云/平面查看器")
-    parser.add_argument("-d", "--output_dir", type=str, default=None, help="平面输出目录")
+    parser.add_argument("-j", "--json_path", type=str, default=None, help="平面JSON文件路径，将从同一目录加载纹理")
     parser.add_argument("-p", "--pcd_path", type=str, default=None, help="点云路径 (.ply / .pcd)")
     args = parser.parse_args()
-    visualize(args.output_dir, args.pcd_path)
+    visualize(args.json_path, args.pcd_path)

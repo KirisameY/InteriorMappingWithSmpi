@@ -110,7 +110,7 @@ if __name__ == "__main__":
     # 3. 关闭梯度计算（预览不需要记录任何反向传播的信息）
     with torch.no_grad():
         # 前向传播
-        rendered_image, weights = renderer(rays_o.reshape(-1, 2), rays_rot.reshape(-1, 2)) # (N_rays, 3), (N_rays, 1)
+        rendered_image, weights, ray_directions = renderer(rays_o.reshape(-1, 2), rays_rot.reshape(-1, 2)) # (N_rays, 3), (N_rays, 1)
 
     # 4. 将输出转换为 OpenCV 可读的格式
     # rendered_image 的形状是 (N_rays, 3)，你需要把它 reshape 回 (H, W, 3)
