@@ -1,7 +1,7 @@
 shader_type spatial;
 render_mode cull_disabled, unshaded;
 
-uniform sampler2DArray texs;
+uniform sampler2DArray texs: repeat_disable;
 
 uniform vec2 origin_size = vec2(1);
 uniform vec2 uv_scale = vec2(1);
@@ -86,7 +86,7 @@ void fragment() {
 		float v = dot(pos_p, planes_v[i]) / dot(planes_v[i], planes_v[i]);
 		
 		vec4 current = vec4(t, float(i), u, v);
-		for(int j = 0; j < N; j++)
+		for(int j = 0; j <= i; j++)
 		{
 			float swap = step(infos[j].x, current.x);
 			vec4 tmp = infos[j];

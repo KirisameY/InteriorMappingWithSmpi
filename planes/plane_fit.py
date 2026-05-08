@@ -225,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output_dir", type=str, help="输出目录")
     parser.add_argument("-n", "--num_planes", type=int, default=8, help="拟合平面数量")
     parser.add_argument("--texture_size", type=int, nargs=2, default=[512, 512], help="纹理尺寸 (W H)")
-    parser.add_argument("--point_spread", type=float, default=1.5/32, help="每个点在纹理上的高斯扩散 sigma (像素)")
+    parser.add_argument("--point_spread", type=float, default=1.5/32, help="每个点在纹理上的高斯扩散 sigma")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)

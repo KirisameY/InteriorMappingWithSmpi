@@ -8,5 +8,5 @@ render_priority = 0
 shader = ExtResource("1_yb2gk")
 shader_parameter/texs = ExtResource("2_dnud6")
 shader_parameter/origin_size = Vector2(6, 4)
-shader_parameter/uv_scale = Vector2(5, 5)
+shader_parameter/uv_scale = Vector2(15, 15)
 shader_parameter/uv_offset = Vector2(0, 0)
