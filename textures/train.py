@@ -11,6 +11,8 @@ import numpy as np
 from PIL import Image
 import math
 
+import lpips
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
@@ -159,7 +161,7 @@ class MultiPlaneRenderer(nn.Module):
         return rendered_color, weights, rays_d.squeeze(0) # (N_rays, 3), (N_planes, N_rays, 1), (N_rays, 3)
 
 
-def load_planes(path: str, noise_level: float = 0.1, n: int = -1) -> MultiPlaneRenderer:
+def load_planes(path: str, noise_level: float = 0.1, alpha_level: float = 0.5, n: int = -1) -> MultiPlaneRenderer:
     def texture_loader(tex_path: str) -> torch.Tensor:
         # 加载纹理图像并转换为 Tensor，范围归一化到 [0, 1]
         img = Image.open(tex_path).convert('L') # 单通道灰度图
@@ -169,7 +171,7 @@ def load_planes(path: str, noise_level: float = 0.1, n: int = -1) -> MultiPlaneR
         alpha = Fv.to_tensor(img) # (1, H, W)，范围 [0, 1]
         # 调换w和h的维度以适配后续处理
         alpha = alpha.permute(0, 2, 1) # (1, W, H)
-        alpha *= 0.5 # alpha 缩放至0.5，增加一些透明度余量
+        alpha *= alpha_level # alpha 缩放至指定水平，增加一些透明度余量
 
         rgb = torch.clamp(0.5 + torch.randn(3, width, height) * noise_level, 0, 1) # (3, W, H)
         rgba = torch.cat([rgb, alpha], dim=0) # (4, W, H)
@@ -183,9 +185,10 @@ def load_planes(path: str, noise_level: float = 0.1, n: int = -1) -> MultiPlaneR
     return MultiPlaneRenderer(planes[:n])
 
 
-def compute_loss(rendered_color : torch.Tensor, gt_color: torch.Tensor, weights: torch.Tensor, 
-                 plane_normals: torch.Tensor, view_dir: torch.Tensor, 
-                 mse_weight: float = 1.0, lpips_weight: float = 0.1) -> torch.Tensor:
+def compute_loss(rendered_color : torch.Tensor, gt_color: torch.Tensor, weights: torch.Tensor,
+                 plane_normals: torch.Tensor, view_dir: torch.Tensor,
+                 mse_weight: float = 1.0, lpips_weight: float = 0.1,
+                 lpips_fn=None, img_w: int = None, img_h: int = None) -> torch.Tensor:
     """
     计算损失函数
     Parameters:
@@ -196,6 +199,9 @@ def compute_loss(rendered_color : torch.Tensor, gt_color: torch.Tensor, weights:
         view_dir: (N_rays, 3) 每个视线的观察方向
         mse_weight: MSE损失的权重
         lpips_weight: LPIPS损失的权重
+        lpips_fn: LPIPS 模型（None 时不计算 LPIPS）
+        img_w: 图像宽度，LPIPS 需要 reshape 回 2D
+        img_h: 图像高度，LPIPS 需要 reshape 回 2D
     """
 
     # 格式化张量
@@ -206,15 +212,26 @@ def compute_loss(rendered_color : torch.Tensor, gt_color: torch.Tensor, weights:
     loss_l2 = (rendered_color - gt_color) ** 2 # (N_rays, 3)
     loss_l2 = loss_l2.unsqueeze(0)             # (1, N_rays, 3)
 
-    # todo: LPIPS误差
-
-    loss = loss_l2 * mse_weight #+ loss_lpips * lpips_weight # (N_planes, N_rays, 3)
-
     # 平面视角加权
     cos = (plane_normals * view_dir).sum(dim=-1).abs() # (N_planes, N_rays)
-    loss = loss * cos.unsqueeze(-1) # (N_planes, N_rays, 3)
+    loss = loss_l2 * cos.unsqueeze(-1) # (N_planes, N_rays, 3)
 
-    return loss.mean()
+    loss = loss.mean() * mse_weight
+
+    # LPIPS 感知损失（需在 2D 图像上计算）
+    if lpips_fn is not None and img_w is not None and img_h is not None:
+        # 从 (W*H, 3) 重塑回 (1, 3, H, W)
+        rendered_img = rendered_color.reshape(img_w, img_h, 3).permute(2, 1, 0).unsqueeze(0)  # (1, 3, H, W)
+        gt_img = gt_color.reshape(img_w, img_h, 3).permute(2, 1, 0).unsqueeze(0)             # (1, 3, H, W)
+
+        # LPIPS 期望输入范围 [-1, 1]
+        rendered_img = rendered_img * 2 - 1
+        gt_img = gt_img * 2 - 1
+
+        loss_lpips = lpips_fn(rendered_img, gt_img).mean()
+        loss = loss + loss_lpips * lpips_weight
+
+    return loss
 
 
 def run():
@@ -228,7 +245,7 @@ def run():
     parser.add_argument("-j", "--planes_json", type=str, help="[必选]包含平面信息的JSON文件路径，纹理文件应与JSON在同一目录下")
     parser.add_argument("-c", "--checkpoint_path", type=str, default=None, help="模型的checkpoint路径，用于继续训练")
     parser.add_argument("-n", "--noise_level", type=float, default=0.1, help="[仅当未使用-c时有效]初始纹理的噪声水平，范围 [0, 1]")
-
+    parser.add_argument("-a", "--alpha_level", type=float, default=0.5, help="[仅当未使用-c时有效]初始纹理的透明度水平，范围 [0, 1]")
     parser.add_argument("-g", "--gt_colors_path", type=str, help="[必选]包含一组斜正交投影下真实光场颜色文件的目录，格式为RGB通道的png图像，文件名格式为'rgba_phi_theta.png'，其中theta和phi是对应视角的旋转参数(角度)")
     parser.add_argument("-gx", "--gt_size_x", type=float, default=1, help="gt颜色图像对应视口的x轴尺寸")
     parser.add_argument("-gy", "--gt_size_y", type=float, default=1, help="gt颜色图像对应视口的y轴尺寸")
@@ -244,12 +261,19 @@ def run():
     args = parser.parse_args()
 
 
-    renderer = load_planes(args.planes_json, noise_level=args.noise_level)
+    renderer = load_planes(args.planes_json, noise_level=args.noise_level, alpha_level=args.alpha_level)
 
     if args.checkpoint_path is not None:
         renderer.load_checkpoint(args.checkpoint_path)
 
     renderer.cuda() # 将模型移动到GPU
+
+    # 初始化 LPIPS 感知损失模型（使用 AlexNet 主干，轻量快速）
+    if args.lpips_weight > 0:
+        lpips_fn = lpips.LPIPS(net='alex').cuda()
+        lpips_fn.eval()
+    else:
+        lpips_fn = None
 
     optimizer = torch.optim.Adam(renderer.parameters(), lr=args.learning_rate)
     epochs = args.epochs
@@ -257,7 +281,7 @@ def run():
 
     # 从指定目录加载所有的 ground truth 颜色图像，并根据文件名提取对应的视角参数，构建训练数据列表
     gtfile_regex = re.compile(r"rgba_(?P<phi>-?[\d.]+)_(?P<theta>-?[\d.]+)\.png") # 从文件名中提取theta和phi的正则表达式
-    ground_truths : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
+    ground_truths : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor, int, int]] = []
     for gtpath in Path(args.gt_colors_path).rglob("*.png"):
         match = gtfile_regex.match(gtpath.name)
         if match:
@@ -274,7 +298,7 @@ def run():
             ray_rot = torch.tensor([theta, phi]) # (2,)
 
             gt_color = Fv.to_tensor(image).permute(2, 1, 0) # (W, H, 3)
-            ground_truths.append((ray_o, ray_rot, gt_color))
+            ground_truths.append((ray_o, ray_rot, gt_color, width, height))
         else:
             print(f"警告: 文件 {gtpath} 的命名不符合 'rgba_phi_theta.png' 格式，已跳过")
     print(f"共加载了 {len(ground_truths)} 条训练数据")
@@ -289,7 +313,7 @@ def run():
         total_loss = 0.0
         gts : List[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = random.sample(ground_truths, len(ground_truths))
 
-        for ray_o, ray_rot, gt_color in gts:
+        for ray_o, ray_rot, gt_color, img_w, img_h in gts:
             optimizer.zero_grad()
 
             # 传入cuda，并调整形状以适配模型输入要求
@@ -299,7 +323,9 @@ def run():
 
             rendered_color, weights, view_dir = renderer(ray_o, ray_rot) # (N_rays, 3), (N_planes, N_rays, 1), (N_rays, 3)
 
-            loss = compute_loss(rendered_color, gt_color.reshape(-1, 3), weights, renderer.plane_normals, view_dir, args.mse_weight, args.lpips_weight)
+            loss = compute_loss(rendered_color, gt_color.reshape(-1, 3), weights, renderer.plane_normals, view_dir,
+                                args.mse_weight, args.lpips_weight,
+                                lpips_fn=lpips_fn, img_w=img_w, img_h=img_h)
             loss.backward()
             optimizer.step()
 
