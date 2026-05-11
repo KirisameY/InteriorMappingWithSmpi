@@ -159,6 +159,65 @@ class MultiPlaneRenderer(nn.Module):
 
         # final. 返回渲染结果和权重（权重用于深度学习）
         return rendered_color, weights, rays_d.squeeze(0) # (N_rays, 3), (N_planes, N_rays, 1), (N_rays, 3)
+    
+    def compute_loss(self, rendered_color : torch.Tensor, gt_color: torch.Tensor, weights: torch.Tensor,
+                 plane_normals: torch.Tensor, view_dir: torch.Tensor,
+                 mse_weight: float = 1.0, lpips_weight: float = 0.1, tv_weight: float = 0.01,
+                 lpips_fn=None, img_w: int = None, img_h: int = None) -> torch.Tensor:
+        """
+        计算损失函数
+        Parameters:
+            rendered_color: (N_rays, 3) 渲染得到的颜色
+            gt_color: (N_rays, 3) 真实的颜色
+            weights: (N_planes, N_rays, 1) 每个平面对每条射线的贡献度
+            plane_normals: (N_planes, 3) 每个平面的法线
+            view_dir: (N_rays, 3) 每个视线的观察方向
+            mse_weight: MSE损失的权重
+            lpips_weight: LPIPS损失的权重
+            lpips_fn: LPIPS 模型（None 时不计算 LPIPS）
+            img_w: 图像宽度，LPIPS 需要 reshape 回 2D
+            img_h: 图像高度，LPIPS 需要 reshape 回 2D
+        """
+
+        # 格式化张量
+        plane_normals = plane_normals.unsqueeze(1) # (N_planes, 1, 3)
+        view_dir = view_dir.unsqueeze(0)           # (1, N_rays, 3)
+
+        # 基础L2误差
+        loss_l2 = (rendered_color - gt_color) ** 2 # (N_rays, 3)
+        loss_l2 = loss_l2.unsqueeze(0)             # (1, N_rays, 3)
+
+        # 平面视角加权
+        cos = (plane_normals * view_dir).sum(dim=-1).abs() # (N_planes, N_rays)
+        loss = loss_l2 * cos.unsqueeze(-1) # (N_planes, N_rays, 3)
+
+        loss = loss.mean() * mse_weight
+
+        # LPIPS 感知损失
+        if lpips_fn is not None and img_w is not None and img_h is not None:
+            # 从 (W*H, 3) 重塑回 (1, 3, H, W)
+            rendered_img = rendered_color.reshape(img_w, img_h, 3).permute(2, 1, 0).unsqueeze(0)  # (1, 3, H, W)
+            gt_img = gt_color.reshape(img_w, img_h, 3).permute(2, 1, 0).unsqueeze(0)             # (1, 3, H, W)
+
+            # LPIPS 期望输入范围 [-1, 1]
+            rendered_img = rendered_img * 2 - 1
+            gt_img = gt_img * 2 - 1
+
+            loss_lpips = lpips_fn(rendered_img, gt_img).mean()
+            loss = loss + loss_lpips * lpips_weight
+
+        # TV 正则化
+        if tv_weight > 0:
+            # 计算纹理的总变差（Total Variation）正则化，鼓励纹理平滑
+            # textures: (N_planes, 4, tex_w, tex_h)
+            # 计算水平方向的梯度差 (相邻列)
+            diff_h = torch.abs(self.textures[:, :, :, 1:] - self.textures[:, :, :, :-1])
+            # 计算垂直方向的梯度差 (相邻行)
+            diff_w = torch.abs(self.textures[:, :, 1:, :] - self.textures[:, :, :-1, :])
+            tv_loss = diff_h.mean() + diff_w.mean()
+            loss = loss + tv_loss * tv_weight
+
+        return loss
 
 
 def load_planes(path: str, noise_level: float = 0.1, alpha_level: float = 0.5, n: int = -1) -> MultiPlaneRenderer:
@@ -185,55 +244,6 @@ def load_planes(path: str, noise_level: float = 0.1, alpha_level: float = 0.5, n
     return MultiPlaneRenderer(planes[:n])
 
 
-def compute_loss(rendered_color : torch.Tensor, gt_color: torch.Tensor, weights: torch.Tensor,
-                 plane_normals: torch.Tensor, view_dir: torch.Tensor,
-                 mse_weight: float = 1.0, lpips_weight: float = 0.1,
-                 lpips_fn=None, img_w: int = None, img_h: int = None) -> torch.Tensor:
-    """
-    计算损失函数
-    Parameters:
-        rendered_color: (N_rays, 3) 渲染得到的颜色
-        gt_color: (N_rays, 3) 真实的颜色
-        weights: (N_planes, N_rays, 1) 每个平面对每条射线的贡献度
-        plane_normals: (N_planes, 3) 每个平面的法线
-        view_dir: (N_rays, 3) 每个视线的观察方向
-        mse_weight: MSE损失的权重
-        lpips_weight: LPIPS损失的权重
-        lpips_fn: LPIPS 模型（None 时不计算 LPIPS）
-        img_w: 图像宽度，LPIPS 需要 reshape 回 2D
-        img_h: 图像高度，LPIPS 需要 reshape 回 2D
-    """
-
-    # 格式化张量
-    plane_normals = plane_normals.unsqueeze(1) # (N_planes, 1, 3)
-    view_dir = view_dir.unsqueeze(0)           # (1, N_rays, 3)
-
-    # 基础L2误差
-    loss_l2 = (rendered_color - gt_color) ** 2 # (N_rays, 3)
-    loss_l2 = loss_l2.unsqueeze(0)             # (1, N_rays, 3)
-
-    # 平面视角加权
-    cos = (plane_normals * view_dir).sum(dim=-1).abs() # (N_planes, N_rays)
-    loss = loss_l2 * cos.unsqueeze(-1) # (N_planes, N_rays, 3)
-
-    loss = loss.mean() * mse_weight
-
-    # LPIPS 感知损失（需在 2D 图像上计算）
-    if lpips_fn is not None and img_w is not None and img_h is not None:
-        # 从 (W*H, 3) 重塑回 (1, 3, H, W)
-        rendered_img = rendered_color.reshape(img_w, img_h, 3).permute(2, 1, 0).unsqueeze(0)  # (1, 3, H, W)
-        gt_img = gt_color.reshape(img_w, img_h, 3).permute(2, 1, 0).unsqueeze(0)             # (1, 3, H, W)
-
-        # LPIPS 期望输入范围 [-1, 1]
-        rendered_img = rendered_img * 2 - 1
-        gt_img = gt_img * 2 - 1
-
-        loss_lpips = lpips_fn(rendered_img, gt_img).mean()
-        loss = loss + loss_lpips * lpips_weight
-
-    return loss
-
-
 def run():
     import argparse
     from pathlib import Path
@@ -257,7 +267,7 @@ def run():
     parser.add_argument("-e", "--epochs", type=int, default=100, help="训练的总轮数")
     parser.add_argument("-wm", "--mse_weight", type=float, default=1.0, help="MSE损失的权重")
     parser.add_argument("-wl", "--lpips_weight", type=float, default=0.1, help="LPIPS损失的权重")
-
+    parser.add_argument("-wt", "--tv_weight", type=float, default=0.01, help="TV正则化的权重")
     args = parser.parse_args()
 
 
@@ -323,8 +333,8 @@ def run():
 
             rendered_color, weights, view_dir = renderer(ray_o, ray_rot) # (N_rays, 3), (N_planes, N_rays, 1), (N_rays, 3)
 
-            loss = compute_loss(rendered_color, gt_color.reshape(-1, 3), weights, renderer.plane_normals, view_dir,
-                                args.mse_weight, args.lpips_weight,
+            loss = renderer.compute_loss(rendered_color, gt_color.reshape(-1, 3), weights, renderer.plane_normals, view_dir,
+                                args.mse_weight, args.lpips_weight, args.tv_weight,
                                 lpips_fn=lpips_fn, img_w=img_w, img_h=img_h)
             loss.backward()
             optimizer.step()
