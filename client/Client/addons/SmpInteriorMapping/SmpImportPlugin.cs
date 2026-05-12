@@ -10,6 +10,8 @@ using System.Text.Json;
 
 using Godot;
 
+using JetBrains.Annotations;
+
 using FileAccess = Godot.FileAccess;
 
 #if TOOLS
@@ -47,11 +49,14 @@ internal partial class SmpImportPlugin : EditorImportPlugin
         using var fileBuf = new MemoryStream(fileContent);
         using var zip = new ZipArchive(fileBuf);
         using var plansJson = zip.GetEntry("planes.json")?.Open();
+        using var viewportJson = zip.GetEntry("viewport.json")?.Open();
         //var texPng = zip.GetEntry("textures.png")?.Open();
 
-        if (plansJson is null) return Error.Failed;
+        if (plansJson is null || viewportJson is null) return Error.Failed;
 
-        var planeData = JsonSerializer.Deserialize<List<PlaneData>>(plansJson, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
+        var jsonOpt = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+        var planeData = JsonSerializer.Deserialize<List<PlaneData>>(plansJson, jsonOpt);
         if (planeData is null) return Error.Failed;
         var planeCount = planeData.Count;
         var shaderStr = GenerateShader(planeData);
@@ -73,9 +78,12 @@ internal partial class SmpImportPlugin : EditorImportPlugin
             return img;
         })));
 
+        var viewportData = JsonSerializer.Deserialize<ViewportData>(viewportJson, jsonOpt);
+
         var mat = new ShaderMaterial();
         mat.Shader = shader;
         mat.SetShaderParameter("texs", texs);
+        mat.SetShaderParameter("origin_size", new Vector2((float)viewportData.Width, (float)viewportData.Height));
 
         string filename = $"{savePath}.{_GetSaveExtension()}";
         return ResourceSaver.Save(mat, filename);
@@ -211,7 +219,7 @@ internal partial class SmpImportPlugin : EditorImportPlugin
                         final_color += color.rgb * color.a;
                 """
             );
-           builder.AppendLine("    }");
+            builder.AppendLine("    }");
         }
 
         builder.AppendLine("""
@@ -225,12 +233,20 @@ internal partial class SmpImportPlugin : EditorImportPlugin
     }
 
 
+    [UsedImplicitly]
     private struct PlaneData
     {
         public List<double> Center { get; set; }
         public List<double> Normal { get; set; }
         public List<double> LengthVec { get; set; }
         public List<double> WidthVec { get; set; }
+    }
+
+    [UsedImplicitly]
+    private struct ViewportData
+    {
+        public double Width { get; set; }
+        public double Height { get; set; }
     }
 }
 
