@@ -4,8 +4,9 @@ render_mode cull_disabled, unshaded;
 uniform sampler2DArray texs: repeat_disable;
 
 uniform vec2 origin_size = vec2(1);
-uniform vec2 uv_scale = vec2(1);
-uniform vec2 uv_offset = vec2(0);
+instance uniform vec2 uv_scale = vec2(1);
+instance uniform vec2 uv_offset = vec2(0);
+instance uniform vec2 uv_margin = vec2(0);
 
 varying vec3 view_dir;
 
@@ -50,7 +51,6 @@ void vertex() {
 	UV *= vec2(1, -1);
 	UV += uv_offset;
 	UV *= uv_scale;
-	UV *= origin_size;
 	
 	// 切线空间变换
 	vec3 cam_pos_model = (inverse(MODEL_MATRIX) * INV_VIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
@@ -70,7 +70,8 @@ void fragment() {
 	// Called for every pixel the material is visible on.
 	
 	vec3 vd = normalize(view_dir);
-	vec3 org = vec3(mod(UV, origin_size) - origin_size/2., 0);
+	vec2 uv_unscaled = (fract(UV) - .5) / (1. - uv_margin) + .5;
+	vec3 org = vec3(uv_unscaled * origin_size - origin_size/2., 0);
 	
 	#define N 24
 	

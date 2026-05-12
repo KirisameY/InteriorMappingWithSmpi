@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c0uoosyeukg4f"]
 
-[ext_resource type="Material" uid="uid://bmhuhqj364np4" path="res://res/planes/0_material.tres" id="1_ulcgi"]
+[ext_resource type="Material" uid="uid://be4braib4fb2i" path="res://res/wooden_room.smp" id="1_ulcgi"]
 
 [sub_resource type="QuadMesh" id="QuadMesh_ulcgi"]
 size = Vector2(30, 20)
@@ -70,6 +70,8 @@ _data = {
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=457634975]
 material_override = ExtResource("1_ulcgi")
+instance_shader_parameters/uv_margin = Vector2(0.5, 0.5)
+instance_shader_parameters/uv_scale = Vector2(2, 2)
 mesh = SubResource("QuadMesh_ulcgi")
 
 [node name="Node3D" type="Node3D" parent="." unique_id=1159237433]
