@@ -96,7 +96,7 @@ internal partial class SmpImportPlugin : EditorImportPlugin
         builder.AppendLine("shader_type spatial;")
                .AppendLine("render_mode cull_disabled, unshaded;")
                .AppendLine()
-               .AppendLine("uniform sampler2DArray texs: repeat_disable;")
+               .AppendLine("uniform sampler2DArray texs: repeat_disable, source_color;")
                .AppendLine("uniform vec2 origin_size = vec2(1);")
                .AppendLine()
                .AppendLine("instance uniform vec2 uv_scale = vec2(1);")

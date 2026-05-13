@@ -1,7 +1,7 @@
 shader_type spatial;
 render_mode cull_disabled, unshaded;
 
-uniform sampler2DArray texs: repeat_disable;
+uniform sampler2DArray texs: repeat_disable, source_color;
 
 uniform vec2 origin_size = vec2(1);
 instance uniform vec2 uv_scale = vec2(1);

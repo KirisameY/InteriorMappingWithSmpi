@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://w1spyeufpn4o"]
+
+[ext_resource type="Shader" uid="uid://cxdxhok03gt5s" path="res://res/im/interior_mapping.gdshader" id="1_py6ts"]
+[ext_resource type="Texture2D" uid="uid://ex8xycalpm6q" path="res://res/im/imap0.png" id="2_as1cg"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_py6ts")
+shader_parameter/tex = ExtResource("2_as1cg")
+shader_parameter/room_depth = 8.00000037674012
+shader_parameter/back_wall_pos = Vector2(0.5, 0.5)
+shader_parameter/back_wall_size = Vector2(0.7, 0.7)
