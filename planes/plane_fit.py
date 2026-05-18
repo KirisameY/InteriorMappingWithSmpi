@@ -64,6 +64,8 @@ def fit_planes_with_rectangles(
     planes = []
     temp_pcd = copy.deepcopy(working_pcd)
 
+    print(f"✅️ 加载完成，共 {len(points)} 个点，准备拟合最多 {num_planes} 个平面")
+
     for _ in range(num_planes):
         print(f"⏳ 初始平面拟合中... ({_+1}/{num_planes})")
         if len(temp_pcd.points) < 10:
@@ -125,6 +127,8 @@ def fit_planes_with_rectangles(
         planes = new_planes
         if change < 1e-4:
             break
+
+        print(f"  - EM 迭代 {_+1}/{max_em_iter} 完成，平面参数变化: {change:.6f}，当前分配点数: {[len(c) for c in clusters]}/{len(points)} ({[len(c)/len(points) for c in clusters]})")
 
     # ---- 4. 提取矩形 + 纹理 ----
     rectangles: List[PlaneRectangle] = []
@@ -215,6 +219,36 @@ def fit_planes_with_rectangles(
             width_vec=rect_w_vec,
             texture=texture
         ))
+
+    # ---- 5. 计算拟合评价指标 ----
+    all_assigned_indices = [idx for cluster in clusters for idx in cluster]
+    total_points = len(points)
+    outlier_indices = np.setdiff1d(np.arange(total_points), all_assigned_indices)
+    
+    outlier_ratio = len(outlier_indices) / total_points
+    
+    # 计算分配点的总代价
+    total_cost = 0.0
+    for k, cluster_indices in enumerate(clusters):
+        plane_n = planes[k][:3]
+        plane_d = planes[k][3]
+        plane_n_norm = plane_n / np.linalg.norm(plane_n)
+        
+        for idx in cluster_indices:
+            p = points[idx]
+            n = normals[idx]
+            dist = abs(np.dot(plane_n_norm, p) + plane_d / np.linalg.norm(plane_n))
+            cos_theta = abs(np.dot(n, plane_n_norm))
+            angle_err = 1.0 - np.clip(cos_theta, 0.0, 1.0)
+            total_cost += (alpha * dist + beta * angle_err)
+
+    print(f"\n--- 平面拟合评价指标 ---")
+    print(f"离群点比例: {outlier_ratio:.2%}")
+    print(f"拟合点总代价和: {total_cost:.4f}")
+    print(f"平均每个点代价: {total_cost / len(all_assigned_indices) if all_assigned_indices else 0:.4f}")
+    print("--------------------------\n")
+
+    return rectangles
 
     return rectangles
 
