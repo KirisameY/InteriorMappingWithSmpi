@@ -1,0 +1,22 @@
+shader perspective_camera(
+    float camera_width = 2.0 [[ float sensitivity = 0.1, float min = 0 ]],
+    float camera_height = 2.0 [[ float sensitivity = 0.1, float min = 0 ]],
+    float angle_theta = 0.0 [[ float sensitivity = 0.1, float min = -90, float max = 90 ]],
+    float angle_phi = 0.0 [[ float sensitivity = 0.1, float min = -90, float max = 90 ]],
+    output point position = 0.0,
+    output vector direction = 0.0,
+    output color throughput = 1.0)
+{
+    // pos
+    point pCam = camera_shader_raster_position() - point(0.5);
+    position = pCam * point(camera_width, camera_height, 0);
+
+    // dir
+    float rad_theta = radians(angle_theta);
+    float rad_phi = radians(angle_phi);
+    
+    point pDir = point(0, 0, 1);
+    pDir = rotate(pDir, rad_theta, vector(-1, 0, 0));
+    pDir = rotate(pDir, rad_phi, vector(0, 1, 0));
+    direction = vector(pDir);
+}

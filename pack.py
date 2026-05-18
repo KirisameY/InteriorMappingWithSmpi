@@ -7,7 +7,7 @@ import re
 def main():
     parser = argparse.ArgumentParser(description="将平面定义 JSON 和平面纹理图像打包为 .smp 文件")
     parser.add_argument("-j", "--json", type=str, required=True, help="平面定义 JSON 文件路径")
-    parser.add_argument("-d", "--texture-dir", type=str, required=True, help="包含 plane_N.png 纹理文件的目录")
+    parser.add_argument("-d", "--texture_dir", type=str, required=True, help="包含 plane_N.png 纹理文件的目录")
     parser.add_argument("-o", "--output", type=str, required=True, help="输出 .smp 文件路径")
     parser.add_argument("-vh", "--viewport_height", type=float, default=1.0, help="视口高度 (默认: 1.0)")
     parser.add_argument("-vw", "--viewport_width", type=float, default=1.0, help="视口宽度 (默认: 1.0)")

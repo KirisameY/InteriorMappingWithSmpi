@@ -15,21 +15,28 @@ def main():
         return
     output_path = args[0]
     samples = int(args[1])
+    # 获取 skip 参数，默认为 0
+    skip_count = int(args[2]) if len(args) > 2 else 0
     
     scene = bpy.context.scene
 
     print(f"输出路径: {scene.render.filepath}")
     print(f"采样数: {samples}")
+    if skip_count > 0: print(f"跳过前: {skip_count} 次采样")
 
-    for theta, phi in fibonacci_hemisphere_angles(samples):
+    for i, (theta, phi) in enumerate(fibonacci_hemisphere_angles(samples)):
+        if i < skip_count: continue
+        
+        print(f"采样 {i+1}/{samples}: theta={math.degrees(theta):.2f}°, phi={math.degrees(phi):.2f}°")
+
         # 弧度→角度
         theta = math.degrees(theta)
         phi = math.degrees(phi)
 
         # 设置相机旋转
-        cam = bpy.data.objects['Camera']
-        bpy.data.cameras["摄像机"].cycles_custom["angle_theta"] = theta
-        bpy.data.cameras["摄像机"].cycles_custom["angle_phi"] = phi
+        cam = bpy.data.cameras['Camera']
+        cam.cycles_custom["angle_theta"] = theta
+        cam.cycles_custom["angle_phi"] = phi
 
         # 渲染并保存
         scene.render.filepath = f"{output_path}/rgba_{phi:.4f}_{theta:.4f}.png"
