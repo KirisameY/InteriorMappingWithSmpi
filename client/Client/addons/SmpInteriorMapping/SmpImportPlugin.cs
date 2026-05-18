@@ -203,7 +203,7 @@ internal partial class SmpImportPlugin : EditorImportPlugin
 
         builder.AppendLine()
                .AppendLine("    // 遍历排序信息，采样并alpha混合")
-               .AppendLine("    vec3 final_color = vec3(0);");
+               .AppendLine("    vec4 final_color = vec4(0);");
 
         for (int j = 0; j < n; j++)
         {
@@ -216,7 +216,8 @@ internal partial class SmpImportPlugin : EditorImportPlugin
                         vec4 color = texture(texs, vec3(uv + vec2(.5), i));
                         color *= step(abs(uv.x), 0.5) * step(abs(uv.y), 0.5) * step(0, infos[{j}].x);
                         final_color *= 1.-color.a;
-                        final_color += color.rgb * color.a;
+                        final_color.rgb += color.rgb * color.a;
+                        final_color.a += (1. - final_color.a) * color.a;
                 """
             );
             builder.AppendLine("    }");
@@ -224,7 +225,7 @@ internal partial class SmpImportPlugin : EditorImportPlugin
 
         builder.AppendLine("""
                 
-                ALBEDO = final_color;
+                ALBEDO = final_color.rgb * final_color.a;
             }
             """
         );
