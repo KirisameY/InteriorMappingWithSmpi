@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c0uoosyeukg4f"]
 
-[ext_resource type="Material" uid="uid://be4braib4fb2i" path="res://res/wooden_room.smp" id="1_ulcgi"]
+[ext_resource type="Material" uid="uid://be4braib4fb2i" path="res://res/compare_wr/wooden_room.smp" id="1_ulcgi"]
 
 [sub_resource type="QuadMesh" id="QuadMesh_ulcgi"]
 size = Vector2(30, 20)

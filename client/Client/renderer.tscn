@@ -1,0 +1,73 @@
+[gd_scene format=3 uid="uid://dmbu7pqwj0jqn"]
+
+[sub_resource type="GDScript" id="GDScript_y18dx"]
+resource_name = "renderer"
+script/source = "@tool
+extends SubViewport
+
+@onready var CameraRoot := $Node3D
+@onready var Camera := $Node3D/Camera3D
+
+@export_category(\"Multiple Shoot\")
+@export_global_dir var SaveDir := \"\"
+@export var FileNamePrefix := \"\"
+@export_tool_button(\"Shoot\")
+var MultiShoot := func():
+	
+	pass
+
+
+@export_category(\"Single Shoot\")
+@export_custom(PROPERTY_HINT_GLOBAL_SAVE_FILE, \"*.png\") var FileName := \"\"
+@export_tool_button(\"Shoot\")
+var Shoot := func():
+	take_shoot().save_png(FileName)
+
+
+@export_category(\"State\")
+
+@export_exp_easing() var CameraDistance := 5.0:
+	get(): return Camera.position.z
+	set(value):
+		(func():
+			Camera.position.z = value
+		).call_deferred()
+
+@export_range(0, 180, 0.5) var CameraAngle := 0.0:
+	get(): return -CameraRoot.rotation_degrees.x
+	set(value):
+		(func():
+			CameraRoot.rotation_degrees.x = -value
+		).call_deferred()
+
+@export_range(-180, 180, 0.5) var CameraTanAngle := 0.0:
+	get(): return CameraRoot.rotation_degrees.z
+	set(value):
+		(func():
+			CameraRoot.rotation_degrees.z = value
+			Camera.rotation_degrees.z = -value
+		).call_deferred()
+
+@export_range(1, 179, 0.1) var CameraFov := 75.0:
+	get(): return Camera.fov
+	set(value):
+		(func():
+			Camera.fov = value
+		).call_deferred()
+
+
+func take_shoot() -> Image:
+	return get_texture().get_image()
+"
+
+[node name="Renderer" type="SubViewport" unique_id=2137518421]
+size = Vector2i(800, 600)
+script = SubResource("GDScript_y18dx")
+
+[node name="Node3D" type="Node3D" parent="." unique_id=186376618]
+transform = Transform3D(0.99999994, 0, 0, 0, 0.9999999, 0, 0, 0, 0.9999999, 0, 0, 0)
+rotation_order = 4
+
+[node name="Camera3D" type="Camera3D" parent="Node3D" unique_id=1436316341]
+transform = Transform3D(1.0000001, 1.5423001e-16, 3.6733272e-09, 0, 1, -4.198646e-08, -3.6733276e-09, 4.198646e-08, 1, 4.21546e-08, -1.1920929e-07, 5)
+near = 0.001

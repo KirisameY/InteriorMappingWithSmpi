@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://cne1ki783uhon"]
+
+[ext_resource type="Material" uid="uid://bkx4tfq1wrtee" path="res://res/office/office.smp" id="1_ab7qj"]
+[ext_resource type="Material" uid="uid://dsl4v84dftici" path="res://res/room_maru/room_maru.smp" id="2_nmu2h"]
+[ext_resource type="Material" uid="uid://bx736jiubnuyf" path="res://res/office/imap.tres" id="2_pwh1v"]
+[ext_resource type="PackedScene" uid="uid://tx2dq5cyetce" path="res://bg_box.tscn" id="3_n0iir"]
+[ext_resource type="PackedScene" uid="uid://dvxgkt1hoce4c" path="res://res/office/office_bake.glb" id="4_60y76"]
+[ext_resource type="Material" uid="uid://bselnd88cs8m8" path="res://res/room_maru/imap.tres" id="6_fhgm7"]
+[ext_resource type="PackedScene" uid="uid://byuqefp5v7ms2" path="res://res/room_maru/room_maru_bake.glb" id="7_lvhpi"]
+[ext_resource type="Material" uid="uid://q7axjxyyhglh" path="res://res/duplex.smp" id="8_polge"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_nmu2h"]
+size = Vector2(4.92, 2.44)
+
+[sub_resource type="QuadMesh" id="QuadMesh_n0iir"]
+size = Vector2(3.25, 2.2)
+
+[sub_resource type="QuadMesh" id="QuadMesh_o33hw"]
+size = Vector2(4.41, 2.08)
+
+[node name="OtherTest" type="Node3D" unique_id=266382186]
+
+[node name="Office" type="Node3D" parent="." unique_id=1378005287]
+visible = false
+
+[node name="Smp" type="MeshInstance3D" parent="Office" unique_id=573672156]
+material_override = ExtResource("1_ab7qj")
+mesh = SubResource("QuadMesh_nmu2h")
+
+[node name="Im" type="MeshInstance3D" parent="Office" unique_id=1631054263]
+material_override = ExtResource("2_pwh1v")
+instance_shader_parameters/origin_size = Vector2(4.92, 2.44)
+mesh = SubResource("QuadMesh_nmu2h")
+
+[node name="office_bake" parent="Office" unique_id=810590464 instance=ExtResource("4_60y76")]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="BgBox" parent="Office" unique_id=896845558 instance=ExtResource("3_n0iir")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2500)
+instance_shader_parameters/size = Vector2(4.92, 2.44)
+
+[node name="RoomMaru" type="Node3D" parent="." unique_id=459411801]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.474653, 1.7534132, -0.6364999)
+visible = false
+
+[node name="Smp" type="MeshInstance3D" parent="RoomMaru" unique_id=636439382]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.474653, -1.7534132, 0.6364999)
+material_override = ExtResource("2_nmu2h")
+instance_shader_parameters/uv_margin = Vector2(0, 0)
+instance_shader_parameters/uv_scale = Vector2(1, 1)
+mesh = SubResource("QuadMesh_n0iir")
+
+[node name="Im" type="MeshInstance3D" parent="RoomMaru" unique_id=25570008]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.474653, -1.7534132, 0.6364999)
+material_override = ExtResource("6_fhgm7")
+instance_shader_parameters/uv_margin = Vector2(0, 0)
+instance_shader_parameters/uv_scale = Vector2(1, 1)
+mesh = SubResource("QuadMesh_n0iir")
+
+[node name="room_maru_bake" parent="RoomMaru" unique_id=783678392 instance=ExtResource("7_lvhpi")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 5.474653, -1.7534132, 0.6364999)
+
+[node name="BgBox" parent="RoomMaru" unique_id=1306313879 instance=ExtResource("3_n0iir")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.474653, -1.7534132, 2500.6365)
+instance_shader_parameters/size = Vector2(3.25, 2.2)
+
+[node name="duplex" type="MeshInstance3D" parent="." unique_id=203261267]
+material_override = ExtResource("8_polge")
+instance_shader_parameters/uv_margin = Vector2(0, 0)
+instance_shader_parameters/uv_offset = Vector2(0, 0)
+instance_shader_parameters/uv_scale = Vector2(3, 3)
+mesh = SubResource("QuadMesh_o33hw")

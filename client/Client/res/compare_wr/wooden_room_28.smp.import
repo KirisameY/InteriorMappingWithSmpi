@@ -1,0 +1,14 @@
+[remap]
+
+importer="kirisamey.smpimport.smp"
+type="ShaderMaterial"
+uid="uid://bjodyhgtvmnal"
+path="res://.godot/imported/wooden_room_28.smp-631ab067278550d8b3cfb8bb968c06be.res"
+
+[deps]
+
+source_file="res://res/compare_wr/wooden_room_28.smp"
+dest_files=["res://.godot/imported/wooden_room_28.smp-631ab067278550d8b3cfb8bb968c06be.res"]
+
+[params]
+

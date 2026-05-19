@@ -85,7 +85,7 @@ def fit_planes_with_rectangles(
 
     # ---- 3. EM 优化 ----
     for _ in range(max_em_iter):
-        print(f"⏳ EM 优化中... ({_:d}/{max_em_iter})")
+        print(f"⏳ EM 优化中... ({_+1:d}/{max_em_iter})")
         clusters = [[] for _ in range(len(planes))]
 
         for i in range(len(points)):
@@ -125,10 +125,12 @@ def fit_planes_with_rectangles(
 
         change = sum(np.linalg.norm(planes[i][:3] - new_planes[i][:3]) for i in range(len(planes)))
         planes = new_planes
+
+        print(f"  - 当前迭代完成，平面参数变化: {change:.6f})")
         if change < 1e-4:
+            print("  - EM 收敛，提前结束迭代")
             break
 
-        print(f"  - EM 迭代 {_+1}/{max_em_iter} 完成，平面参数变化: {change:.6f}，当前分配点数: {[len(c) for c in clusters]}/{len(points)} ({[len(c)/len(points) for c in clusters]})")
 
     # ---- 4. 提取矩形 + 纹理 ----
     rectangles: List[PlaneRectangle] = []

@@ -266,7 +266,7 @@ def run():
     parser.add_argument("-r", "--learning_rate", type=float, default=0.01, help="优化器的学习率")
     parser.add_argument("-e", "--epochs", type=int, default=100, help="训练的总轮数")
     parser.add_argument("-wm", "--mse_weight", type=float, default=1.0, help="MSE损失的权重")
-    parser.add_argument("-wl", "--lpips_weight", type=float, default=0.1, help="LPIPS损失的权重")
+    parser.add_argument("-wl", "--lpips_weight", type=float, default=0, help="LPIPS损失的权重")
     parser.add_argument("-wt", "--tv_weight", type=float, default=0.01, help="TV正则化的权重")
     args = parser.parse_args()
 

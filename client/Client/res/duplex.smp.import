@@ -1,0 +1,14 @@
+[remap]
+
+importer="kirisamey.smpimport.smp"
+type="ShaderMaterial"
+uid="uid://q7axjxyyhglh"
+path="res://.godot/imported/duplex.smp-51719de9f37a352dff08a1472167efc9.res"
+
+[deps]
+
+source_file="res://res/duplex.smp"
+dest_files=["res://.godot/imported/duplex.smp-51719de9f37a352dff08a1472167efc9.res"]
+
+[params]
+

@@ -1,0 +1,14 @@
+[remap]
+
+importer="kirisamey.smpimport.smp"
+type="ShaderMaterial"
+uid="uid://dn1sn15jlb6yw"
+path="res://.godot/imported/office.0.smp-38f71e16a92a81ab4cb6e6c5b730d296.res"
+
+[deps]
+
+source_file="res://res/office/office.0.smp"
+dest_files=["res://.godot/imported/office.0.smp-38f71e16a92a81ab4cb6e6c5b730d296.res"]
+
+[params]
+

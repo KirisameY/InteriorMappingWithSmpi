@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://tx2dq5cyetce"]
+
+[ext_resource type="Material" uid="uid://doauyv43qcpru" path="res://res/bg.tres" id="1_a4oh0"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_y7pg6"]
+size = Vector3(5000, 5000, 5000)
+
+[node name="BgBox" type="MeshInstance3D" unique_id=896845558]
+material_override = ExtResource("1_a4oh0")
+instance_shader_parameters/size = Vector2(30, 20)
+mesh = SubResource("BoxMesh_y7pg6")

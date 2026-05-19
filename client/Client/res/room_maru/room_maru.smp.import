@@ -1,0 +1,14 @@
+[remap]
+
+importer="kirisamey.smpimport.smp"
+type="ShaderMaterial"
+uid="uid://dsl4v84dftici"
+path="res://.godot/imported/room_maru.smp-b592d7349cdc0a6f9c4fc892b9fe4249.res"
+
+[deps]
+
+source_file="res://res/room_maru/room_maru.smp"
+dest_files=["res://.godot/imported/room_maru.smp-b592d7349cdc0a6f9c4fc892b9fe4249.res"]
+
+[params]
+
