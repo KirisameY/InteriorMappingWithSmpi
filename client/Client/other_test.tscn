@@ -8,6 +8,8 @@
 [ext_resource type="Material" uid="uid://bselnd88cs8m8" path="res://res/room_maru/imap.tres" id="6_fhgm7"]
 [ext_resource type="PackedScene" uid="uid://byuqefp5v7ms2" path="res://res/room_maru/room_maru_bake.glb" id="7_lvhpi"]
 [ext_resource type="Material" uid="uid://q7axjxyyhglh" path="res://res/duplex.smp" id="8_polge"]
+[ext_resource type="Material" uid="uid://be4braib4fb2i" path="res://res/compare_wr/wooden_room.smp" id="9_5y6hi"]
+[ext_resource type="PackedScene" uid="uid://dmbu7pqwj0jqn" path="res://renderer.tscn" id="9_o33hw"]
 
 [sub_resource type="QuadMesh" id="QuadMesh_nmu2h"]
 size = Vector2(4.92, 2.44)
@@ -17,6 +19,12 @@ size = Vector2(3.25, 2.2)
 
 [sub_resource type="QuadMesh" id="QuadMesh_o33hw"]
 size = Vector2(4.41, 2.08)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_w7yjm"]
+top_radius = 0.25
+height = 1.0
+cap_top = false
+cap_bottom = false
 
 [node name="OtherTest" type="Node3D" unique_id=266382186]
 
@@ -65,8 +73,28 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.474653, -1.7534132, 2500.63
 instance_shader_parameters/size = Vector2(3.25, 2.2)
 
 [node name="duplex" type="MeshInstance3D" parent="." unique_id=203261267]
+visible = false
 material_override = ExtResource("8_polge")
 instance_shader_parameters/uv_margin = Vector2(0, 0)
 instance_shader_parameters/uv_offset = Vector2(0, 0)
 instance_shader_parameters/uv_scale = Vector2(3, 3)
 mesh = SubResource("QuadMesh_o33hw")
+
+[node name="Column" type="MeshInstance3D" parent="." unique_id=1602207846]
+material_override = ExtResource("9_5y6hi")
+instance_shader_parameters/uv_margin = Vector2(0, 0)
+instance_shader_parameters/uv_scale = Vector2(6, 8)
+mesh = SubResource("CylinderMesh_w7yjm")
+
+[node name="Renderer" parent="." unique_id=2137518421 instance=ExtResource("9_o33hw")]
+Times = 1
+FileName = "D:/Documents/毕设/工程/.analysis/固定视角/office_30_gt.png"
+CameraDistance = 7.5
+CameraAngle = 30.0
+CameraTanAngle = 45.0
+CameraFov = 33.5
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=522083082]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.0425909)
+visible = false
+fov = 102.31898

@@ -11,10 +11,26 @@ extends SubViewport
 @export_category(\"Multiple Shoot\")
 @export_global_dir var SaveDir := \"\"
 @export var FileNamePrefix := \"\"
+@export var Times := 1
 @export_tool_button(\"Shoot\")
 var MultiShoot := func():
+	if Times <= 1:
+		var curent_angle = CameraAngle
+		CameraAngle = AngleFrom
+		take_shoot().save_png(SaveDir+\"/\"+FileNamePrefix+\".png\")
+		CameraAngle = curent_angle
+		return
 	
+	var current_angle = CameraAngle
+	for i in Times:
+		var angle = lerpf(AngleFrom, AngleTo, float(i)/(Times-1))
+		CameraAngle = angle
+		await get_tree().process_frame
+		take_shoot().save_png(SaveDir+\"/\"+FileNamePrefix+str(angle)+\".png\")
+	CameraAngle = current_angle
 	pass
+@export_range(0, 180, 0.5) var AngleFrom := 0.0
+@export_range(0, 180, 0.5) var AngleTo := 0.0
 
 
 @export_category(\"Single Shoot\")
@@ -22,6 +38,7 @@ var MultiShoot := func():
 @export_tool_button(\"Shoot\")
 var Shoot := func():
 	take_shoot().save_png(FileName)
+	pass
 
 
 @export_category(\"State\")
@@ -36,9 +53,12 @@ var Shoot := func():
 @export_range(0, 180, 0.5) var CameraAngle := 0.0:
 	get(): return -CameraRoot.rotation_degrees.x
 	set(value):
-		(func():
+		if CameraRoot == null:
+			(func():
+				CameraRoot.rotation_degrees.x = -value
+			).call_deferred()
+		else:
 			CameraRoot.rotation_degrees.x = -value
-		).call_deferred()
 
 @export_range(-180, 180, 0.5) var CameraTanAngle := 0.0:
 	get(): return CameraRoot.rotation_degrees.z
@@ -63,6 +83,7 @@ func take_shoot() -> Image:
 [node name="Renderer" type="SubViewport" unique_id=2137518421]
 size = Vector2i(800, 600)
 script = SubResource("GDScript_y18dx")
+Times = null
 
 [node name="Node3D" type="Node3D" parent="." unique_id=186376618]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.9999999, 0, 0, 0, 0.9999999, 0, 0, 0)

@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://djc03xbbemdkc"]
+
+[ext_resource type="Material" uid="uid://c4todnd0dewll" path="res://res/compare_wr/wooden_room_32.smp" id="1_dvr4a"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_ulcgi"]
+size = Vector2(30, 20)
+
+[node name="Scene" type="Node3D" unique_id=1776722009]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=457634975]
+material_override = ExtResource("1_dvr4a")
+instance_shader_parameters/uv_margin = Vector2(0, 0)
+instance_shader_parameters/uv_scale = Vector2(1, 1)
+mesh = SubResource("QuadMesh_ulcgi")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=540178692]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)

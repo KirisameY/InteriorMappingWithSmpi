@@ -8,6 +8,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 class ImageEvaluator:
+    # ... (保持原有的 __init__, load_image, compute_metrics, show_heatmap 不变)
     def __init__(self, use_gpu=True, use_lpips=True):
         self.device = torch.device("cuda" if use_gpu and torch.cuda.is_available() else "cpu")
         if use_lpips:
@@ -41,45 +42,59 @@ class ImageEvaluator:
 
 def main():
     parser = argparse.ArgumentParser(description="Image Quality Evaluation Tool")
-    parser.add_argument("-g", "--gt", required=True, help="Path to GT image")
+    parser.add_argument("-g", "--gt", required=True, help="Path to GT image or directory")
     parser.add_argument("-i", "--img", required=True, help="Path to restored image or directory")
     parser.add_argument("-m", "--metrics", nargs='+', choices=['psnr', 'ssim', 'lpips'], default=['psnr'])
     parser.add_argument("-s", "--show", action='store_true', help="Show error heatmap (only for single file)")
     args = parser.parse_args()
 
     evaluator = ImageEvaluator(use_lpips='lpips' in args.metrics)
-    gt = evaluator.load_image(args.gt)
-    if gt is None:
-        print(f"Error: Could not load GT image at {args.gt}")
-        return
+    valid_ext = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff')
 
-    # 判断输入是目录还是文件
-    if os.path.isdir(args.img):
-        print(f"Directory mode detected: {args.img}")
-        valid_ext = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff')
+    # 逻辑判断：文件夹对文件夹，还是单文件对单文件
+    is_img_dir = os.path.isdir(args.img)
+    is_gt_dir = os.path.isdir(args.gt)
+
+    if is_img_dir and is_gt_dir:
+        print(f"Directory-to-Directory mode: {args.img} vs {args.gt}")
         files = [f for f in os.listdir(args.img) if f.lower().endswith(valid_ext)]
-        
         for file_name in files:
-            file_path = os.path.join(args.img, file_name)
-            img = evaluator.load_image(file_path)
+            img_path = os.path.join(args.img, file_name)
+            gt_path = os.path.join(args.gt, file_name)
+            
+            if os.path.exists(gt_path):
+                img = evaluator.load_image(img_path)
+                gt = evaluator.load_image(gt_path)
+                if img is not None and gt is not None and img.shape == gt.shape:
+                    results = evaluator.compute_metrics(img, gt, args.metrics)
+                    res_str = " | ".join([f"{k}: {v:.4f}" for k, v in results.items()])
+                    print(f"[{file_name}] {res_str}")
+                else:
+                    print(f"[{file_name}] Skipped (Shape mismatch or load error)")
+            else:
+                print(f"[{file_name}] Skipped (GT file not found)")
+
+    elif is_img_dir: # 原有的单GT对应文件夹内多文件
+        gt = evaluator.load_image(args.gt)
+        if gt is None: raise ValueError("Invalid GT file")
+        files = [f for f in os.listdir(args.img) if f.lower().endswith(valid_ext)]
+        for file_name in files:
+            img = evaluator.load_image(os.path.join(args.img, file_name))
             if img is not None and img.shape == gt.shape:
                 results = evaluator.compute_metrics(img, gt, args.metrics)
-                res_str = " | ".join([f"{k}: {v:.4f}" for k, v in results.items()])
-                print(f"[{file_name}] {res_str}")
-            else:
-                print(f"[{file_name}] Skipped (Shape mismatch or load error)")
-                
-    else:
-        # 原有的单文件逻辑
+                print(f"[{file_name}] {' | '.join([f'{k}: {v:.4f}' for k, v in results.items()])}")
+    
+    else: # 原有的单文件逻辑
+        gt = evaluator.load_image(args.gt)
         img = evaluator.load_image(args.img)
-        if img is not None and img.shape == gt.shape:
+        if img is not None and gt is not None and img.shape == gt.shape:
             results = evaluator.compute_metrics(img, gt, args.metrics)
             for k, v in results.items():
                 print(f"{k}: {v:.4f}")
             if args.show:
                 evaluator.show_heatmap(img, gt)
         else:
-            print("Error: Image not found or dimension mismatch.")
+            print("Error: Files not found or dimension mismatch.")
 
 if __name__ == "__main__":
     main()
