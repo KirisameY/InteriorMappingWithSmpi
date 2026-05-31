@@ -71,6 +71,7 @@ _data = {
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=457634975]
 material_override = ExtResource("1_ulcgi")
 instance_shader_parameters/uv_margin = Vector2(0, 0)
+instance_shader_parameters/uv_offset = Vector2(0, 0)
 instance_shader_parameters/uv_scale = Vector2(1, 1)
 mesh = SubResource("QuadMesh_ulcgi")
 

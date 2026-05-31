@@ -26,7 +26,8 @@ var MultiShoot := func():
 		var angle = lerpf(AngleFrom, AngleTo, float(i)/(Times-1))
 		CameraAngle = angle
 		await get_tree().process_frame
-		take_shoot().save_png(SaveDir+\"/\"+FileNamePrefix+str(angle)+\".png\")
+		if i == 0: await get_tree().process_frame
+		take_shoot().save_png(SaveDir+\"/\"+FileNamePrefix+( \"%06.2f\" % angle)+\".png\")
 	CameraAngle = current_angle
 	pass
 @export_range(0, 180, 0.5) var AngleFrom := 0.0
@@ -83,7 +84,6 @@ func take_shoot() -> Image:
 [node name="Renderer" type="SubViewport" unique_id=2137518421]
 size = Vector2i(800, 600)
 script = SubResource("GDScript_y18dx")
-Times = null
 
 [node name="Node3D" type="Node3D" parent="." unique_id=186376618]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.9999999, 0, 0, 0, 0.9999999, 0, 0, 0)
